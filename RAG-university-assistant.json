@@ -1,0 +1,797 @@
+{
+  "name": "NeuraTech_RAG_SupportAgent",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "📚 **VECTOR DATABASE BUILDER (KNOWLEDGE BASE CREATOR)**\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎯 **Purpose:**\nThis section automates building and updating the knowledge base  \nthat the chat agent uses to find accurate answers.\n\n⚙️ **Process Flow:**\n1️⃣ **Google Drive Trigger** → Detects new or updated documents in a folder.  \n2️⃣ **Download File** → Fetches the document for processing.  \n3️⃣ **Extract Text / CSV** → Reads the text content from the file.  \n4️⃣ **Character Text Splitter** → Breaks large content into smaller chunks.  \n5️⃣ **Google Gemini Embeddings** → Converts each chunk into an embedding.  \n6️⃣ **Supabase Vector Store** → Saves embeddings, text, and metadata to the database.\n\n🧠 **Why It Matters:**\nKeeps the knowledge base fresh, so students always get up-to-date information.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ **Result:**\nA fully automated backend pipeline that builds and maintains  \nthe chatbot’s intelligence continuously.\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "height": 752,
+        "width": 2800,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "30535cc4-9c3a-491e-9229-e1c8596d6b07",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMonth"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "12YwUejfd5lWDJXMyYWzCoOuSxU1fEhZf",
+          "mode": "list",
+          "cachedResultName": "university_student_support_agent_data",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/12YwUejfd5lWDJXMyYWzCoOuSxU1fEhZf"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        112
+      ],
+      "id": "638b2ddd-ed38-4456-b819-a4ab8c84e54c",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "S0s0vyEVwOn0pWug",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1e4a2d7-4669-483c-b90b-174d766632aa",
+              "name": "file_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "f4a01f96-b218-4f19-a4fb-102eb165cfca",
+              "name": "version ",
+              "value": "2",
+              "type": "string"
+            },
+            {
+              "id": "ab814195-0cfc-497b-85bb-867ed1f632f9",
+              "name": "modified ",
+              "value": "={{ $json.modifiedTime }}",
+              "type": "string"
+            },
+            {
+              "id": "42706665-5bb7-4fbe-b51c-2a4b23cc62b3",
+              "name": "file_type",
+              "value": "={{ $json.mimeType }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        112
+      ],
+      "id": "566b0ec1-e6aa-4160-bca5-e4bfaeb88836",
+      "name": "Set Created Values"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        416,
+        112
+      ],
+      "id": "a943fbbb-8cb2-445e-ad19-7cd57c910e83",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "S0s0vyEVwOn0pWug",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.file_type }}",
+                    "rightValue": "application/vnd.google-apps.document",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "48bb57d3-c835-4136-9450-84c16df52676"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2f282dec-7521-4d5d-89f1-d64e8a7820f4",
+                    "leftValue": "={{ $json.file_type }}",
+                    "rightValue": "application/vnd.google-apps.spreadsheet",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CSV"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        624,
+        112
+      ],
+      "id": "b866f8ea-07f8-4443-b77f-59e5cb03302e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        816,
+        32
+      ],
+      "id": "76cf4eb5-e378-406d-8175-8743c29c92af",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        768,
+        352
+      ],
+      "id": "3f4a3cee-079d-4703-b352-4293497bf592",
+      "name": "Extract from CSV"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "university_student_support_agent_data",
+          "mode": "list",
+          "cachedResultName": "university_student_support_agent_data"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1200,
+        48
+      ],
+      "id": "1d4911b4-c1ce-4bae-9258-948a67508fb2",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "91HDYXjgsMCxojLd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        288
+      ],
+      "id": "b58f67cd-d4cd-4645-9596-f1cd293e8cda",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "miB5JQGoenqlJFDg",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_id",
+                "value": "={{ $('Set Created Values').item.json.file_id }}"
+              },
+              {
+                "name": "version",
+                "value": "={{ $('Set Created Values').item.json['version '] }}"
+              },
+              {
+                "name": "modified",
+                "value": "={{ $('Set Created Values').item.json['modified '] }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        224
+      ],
+      "id": "8d53f74c-eaba-49cf-8e6d-5cf1dd25343b",
+      "name": "Default Data Loader",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        496
+      ],
+      "id": "b9a1b111-8fed-4a9c-baac-991affef86a2",
+      "name": "Character Text Splitter3"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -688
+      ],
+      "id": "a5dd53cf-b66a-4df0-a668-999186072ba6",
+      "name": "When chat message received",
+      "webhookId": "77756285-8fe3-45ff-b873-a9b76279f7f5"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "## ⚙️ **System Message (Detailed – VisionTech University RAG Agent)**\n\n> You are **VisionTech University’s AI Student Support Assistant**, an intelligent virtual agent designed to answer questions about the university.\n>\n> Your primary role is to assist students, parents, and visitors by retrieving accurate information from your knowledge base and generating clear, helpful responses related to university operations.\n>\n> ---\n>\n> ### 🎓 **Your Knowledge Domain Includes**\n>\n> * Admissions Process and Eligibility Criteria\n> * Offered Programs (BS, MS, Diplomas)\n> * Fee Structure and Scholarships\n> * Hostel and Campus Facilities\n> * Examination and Grading Policies\n> * Faculty Information and Contact Details\n> * Academic Calendar and Timings\n> * Student Portal, IT Services, and Transport\n> * Student Societies and Research Opportunities\n>\n> ---\n>\n> ### 🧠 **Behavior & Response Guidelines**\n>\n> 1. **Use Only Trusted Context:** Always rely on the retrieved or provided knowledge base documents. Do **not** invent or assume information beyond the available data.\n> 2. **Accuracy First:** If a query cannot be answered from the data, respond with:\n>    “I’m sorry, I don’t have that information right now. You can contact the admissions office at [admissions@visiontech.edu.pk](mailto:admissions@visiontech.edu.pk) for assistance.”\n> 3. **Tone & Style:** Maintain a professional, friendly, and student-centered tone — helpful, polite, and respectful.\n> 4. **Response Length:** Keep answers concise (2–5 sentences). Use bullet points for clarity when needed.\n> 5. **Formatting:**\n>\n>    * Highlight important details like dates, fees, or emails using bold text.\n>    * Use clear structure (paragraphs or short lists).\n> 6. **Avoid:**\n>\n>    * Mentioning that you are an AI or a RAG model.\n>    * Using filler text like “As an AI language model…”\n>    * Revealing system or technical details.\n> 7. **Fallbacks:**\n>\n>    * If the user’s query is unclear, ask a short clarifying question.\n>    * If the query is out of scope (e.g., personal issues), politely redirect to the proper department.\n>\n> ---\n>\n> ### 💬 **Examples of Expected Behavior**\n>\n> **User:** “When does the next admission cycle start?”\n> **Assistant:** “The next admission cycle for the Fall semester begins in **June 2025**, and the last date to apply for the **BS AI program** is **July 20, 2025**.”\n>\n> **User:** “Do you offer any scholarships?”\n> **Assistant:** “Yes, VisionTech University offers **need-based** and **merit-based** scholarships. Students with 90% or higher marks receive a **100% scholarship**, while those with 80–89% receive **50%**.”\n>\n> ---\n>\n> ### 🎯 **Your Goal**\n>\n> Deliver accurate, easy-to-understand, and contextually correct information that helps users navigate VisionTech University’s services — just like a real university support officer.\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -688
+      ],
+      "id": "67b7c508-71ce-413e-9ba3-8b02ce5b4a71",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -352
+      ],
+      "id": "bcc7bb7f-c329-4d09-a910-78b7a10597df",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "miB5JQGoenqlJFDg",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        -448
+      ],
+      "id": "b831deb3-2cec-47cb-961a-88f830e98d1b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "this vector store stores all the university related information.\n",
+        "tableName": {
+          "__rl": true,
+          "value": "University_Student_Support_Agent DATA",
+          "mode": "list",
+          "cachedResultName": "University_Student_Support_Agent DATA"
+        },
+        "options": {
+          "queryName": "match_university_student_support_agent_data"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        -512
+      ],
+      "id": "c1c79f0a-9609-4e79-ac67-6c09c88300b3",
+      "name": "Supabase Vector Store1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "91HDYXjgsMCxojLd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -336
+      ],
+      "id": "70176338-8b24-4261-ba54-ad8b0d467474",
+      "name": "Embeddings Google Gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QVsJvsfuu7HBYDvO",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "💬 **UNIVERSITY STUDENT SUPPORT CHAT AGENT**\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎯 **Purpose:**\nThis top section handles real-time student queries.  \nIt retrieves information from the Supabase vector database,  \nprocesses it through Gemini, and gives a clear, human-like response.\n\n🧠 **Process Flow:**\n1️⃣ **When Chat Message Received** → Triggered when a user sends a message.  \n2️⃣ **Google Gemini Embeddings** → Converts the query into a semantic vector.  \n3️⃣ **Supabase Vector Search** → Finds the most relevant context from the database.  \n4️⃣ **AI Agent (Gemini)** → Generates a final, contextual answer.  \n5️⃣ **Simple Memory Node** → Keeps previous conversation history for context continuity.\n\n📚 **Outcome:**\nStudents can ask natural questions (like “What’s the admission deadline?”),  \nand the chatbot responds using verified university knowledge.\n\n✅ **Result:**\nAn intelligent, context-aware virtual student support assistant  \npowered by Retrieval-Augmented Generation (RAG).\n",
+        "height": 704,
+        "width": 1968
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        -800
+      ],
+      "typeVersion": 1,
+      "id": "a7802fa0-1679-4d36-918b-919e748e8e0f",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "💬 Trigger – Starts workflow when a student sends a message",
+        "height": 80,
+        "width": 224,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -16,
+        -768
+      ],
+      "typeVersion": 1,
+      "id": "e34e3fce-83f6-4580-b644-6e4a5191963b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "🤖 Gemini – Generates natural responses",
+        "height": 80,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        -224
+      ],
+      "typeVersion": 1,
+      "id": "f1e5306d-876d-4aa2-84d9-963c097a753b",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "📂 Search Context – Retrieves top relevant chunks from DB",
+        "height": 80,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "92682e20-afba-4847-942b-11b6a8875f51",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "🧠 Query Embedding – Converts text → vector for semantic search",
+        "height": 96,
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        832,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "1023f2c8-c7ba-4b6d-8a0f-a6305beb629a",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "🧠 Conversation Memory – Maintains context between turns",
+        "height": 80,
+        "width": 176,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "af1b9d91-620d-4751-9ea1-fda809440cbf",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "⚡ Drive Watcher – Detects file changes automatically",
+        "height": 80,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "89f4763f-1411-4984-b6f4-b5d5972b8cc8",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "📊 CSV Parser – Reads and structures CSV data",
+        "height": 80,
+        "width": 176,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        736,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "0f384881-0075-4646-923a-df4d1e270ef3",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "📄 Text Extractor – Reads content from uploaded documents",
+        "height": 80,
+        "width": 176,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        800,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "ac74aae3-3ff2-448d-9d4c-8a3ba4a555c2",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "⬇️ File Fetch – Downloads new/updated files",
+        "height": 80,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "3455dbae-5571-44af-8f39-a08ed011af2e",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "✂️ Chunk Creator – Splits large text into smaller parts",
+        "height": 80,
+        "width": 176,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1664,
+        624
+      ],
+      "typeVersion": 1,
+      "id": "657fc817-16b8-4970-ad6e-a5090a74aca1",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "🧠 Chunk Embedding – Turns text chunks into vector format",
+        "height": 96,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1056,
+        416
+      ],
+      "typeVersion": 1,
+      "id": "dfbd4e07-e8a8-4fc6-ab70-c349024eed93",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "📦 Store Embeddings – Saves data + metadata in Supabase",
+        "height": 80,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1216,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "6f671191-08bd-4343-9141-8ec7b63cb94e",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "⚙️ Data Pre-Loader – Prepares content before embedding",
+        "height": 80,
+        "width": 176,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1744,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "3e13d93f-8705-490a-b36f-e3a71baa1971",
+      "name": "Sticky Note14"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Created Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Created Values": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Character Text Splitter3": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bdb0c75c-15a8-419a-8703-6ec538d3aec7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03dcb670dd80e2a1664e76876540a37c20684a71e47b8e9b65e44574e808a5f6"
+  },
+  "id": "r1L0vKtlqLO1kOmu",
+  "tags": []
+}
